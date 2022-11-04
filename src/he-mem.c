@@ -25,6 +25,9 @@ BEGIN_DECLS
 /* poly.h */
 extern struct poly_ctx polyctx;
 
+/* fhe.h */
+extern struct he_ctx hectx;
+
 void he_alloc_sk(poly_mpi_t *sk)
 {
   poly_mpi_alloc(sk);
@@ -34,6 +37,12 @@ void he_alloc_pk(struct he_pk *pk)
 {
   poly_mpi_alloc(&pk->p0);
   poly_mpi_alloc(&pk->p1);
+}
+
+void he_alloc_evk(he_evk_t *evk)
+{
+  poly_rns_alloc(&evk->p0, hectx.dimevk);
+  poly_rns_alloc(&evk->p1, hectx.dimevk);
 }
 
 void he_alloc_pt(struct he_pt *pt)
@@ -56,6 +65,12 @@ void he_free_pk(struct he_pk *pk)
 {
   poly_mpi_free(&pk->p0);
   poly_mpi_free(&pk->p1);
+}
+
+void he_free_evk(he_evk_t *evk)
+{
+  poly_rns_free(&evk->p0);
+  poly_rns_free(&evk->p1);
 }
 
 void he_free_pt(struct he_pt *pt)

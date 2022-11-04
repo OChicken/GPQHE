@@ -36,14 +36,14 @@
  * GPQHE_CQ - classical or quantum
  * Available values are 'C' (for classical) or 'Q' (for quantum)
  */
-#define GPQHE_CQ 'Q'
+#define GPQHE_CQ 'C'
 
 /*
  * GPQHE_SEC_LEVEL - security level
  * Change this for different security strengths.
  * Available values are 128, 192, 256
  */
-#define GPQHE_SEC_LEVEL 256u
+#define GPQHE_SEC_LEVEL 128u
 
 #define GPQHE_K 8
 #define GPQHE_BLKSIZ 64   /* block size */

@@ -395,12 +395,13 @@ static void qtable_init(const MPI qL)
     mpi_fdiv(hectx.qh[l], NULL, q, GPQHE_TWO);
     mpi_fdiv(q, NULL, q, Delta);
   }
-  hectx.dim = mpi_get_nbits(qL)/GPQHE_LOGP+1;
+  hectx.dim = mpi_get_nbits(hectx.q[hectx.L])/GPQHE_LOGP+1;
   struct rns_ctx *rns=polyctx.rns;
   for (unsigned int d=0; d<hectx.dim-1; d++, rns=rns->next);
   hectx.P   = mpi_copy(rns->P);
   hectx.PqL = mpi_new(0);
   mpi_mul(hectx.PqL, hectx.P, qL);
+  hectx.dimevk = (mpi_get_nbits(hectx.q[hectx.L])+mpi_get_nbits(hectx.PqL))/GPQHE_LOGP+1;
   mpi_release(Delta);
   mpi_release(q);
 }
@@ -442,6 +443,8 @@ void hectx_init(unsigned int logn, MPI q, unsigned int slots, uint64_t Delta)
   }
   hectx.slots = slots;
   hectx.Delta = Delta;
+  hectx.p = mpi_new(0);
+  mpi_set_ui(hectx.p, Delta);
   qtable_init(q);
   bounds_init(polyctx.n);
   /* bounds */
@@ -491,6 +494,7 @@ void hectx_exit()
   }
   gcry_free(hectx.q);
   gcry_free(hectx.qh);
+  mpi_release(hectx.p);
   mpi_release(hectx.P);
   mpi_release(hectx.PqL);
   free(hectx.bnd.Bmult);

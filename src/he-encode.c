@@ -21,7 +21,7 @@
 #include "poly.h"
 #include "fhe.h"
 #include <complex.h> /* creal, cimag, I */
-#include <math.h>    /* round */
+#include <math.h>    /* round, labs */
 #include <assert.h>
 
 BEGIN_DECLS
@@ -32,18 +32,33 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
+/* types.c */
+extern void double_to_mpi(MPI *r, long double a);
+extern double mpi_to_double(MPI a);
+
 /* canemb.c */
 void canemb(_Complex double a[], const unsigned int slots);
 void invcanemb(_Complex double a[], const unsigned int slots);
+
+static inline double blas_dnrmmax(const double x[], const unsigned int len)
+{
+  double norm = 0;
+  for (unsigned int i=0; i<len; i++) {
+    double tmp = __builtin_fabs(x[i]);
+    if (norm<tmp)
+      norm = tmp;
+  }
+  return norm;
+}
 
 /** Encodes complex array into pt, an integral polynomial. */
 void encode(poly_mpi_t *r, const _Complex double m[], const double Delta)
 {
   _Complex double u[hectx.slots];
   memcpy(u, m, sizeof(u));
+  invcanemb(u, hectx.slots);
   unsigned int nh = polyctx.n/2; /* n half */
   unsigned int gap = nh/hectx.slots;
-  invcanemb(u, hectx.slots);
   for (unsigned int i=0, j=0; i<hectx.slots; i++, j+=gap) {
     double_to_mpi(&r->coeffs[j   ], round((long double)creal(u[i])*Delta));
     double_to_mpi(&r->coeffs[j+nh], round((long double)cimag(u[i])*Delta));
@@ -51,30 +66,31 @@ void encode(poly_mpi_t *r, const _Complex double m[], const double Delta)
 }
 
 /** Decodes pt, an integral polynomial, into complex array. */
-void decode(_Complex double m[], poly_mpi_t *a, const double Delta, const MPI q)
+void decode(_Complex double m[], poly_mpi_t *a, const double Delta)
 {
-  MPI real = mpi_new(0);
-  MPI imag = mpi_new(0);
   unsigned int nh = polyctx.n/2;
   unsigned int gap = nh/hectx.slots;
-  unsigned int logq = mpi_get_nbits(q);
-  for (unsigned int i=0, j=0; i<hectx.slots; i++, j+=gap) {
-    mpi_set(real, a->coeffs[j   ]);
-    mpi_set(imag, a->coeffs[j+nh]);
-#if 0
-    mpi_mod(real, a->coeffs[j   ], q);
-    mpi_mod(imag, a->coeffs[j+nh], q);
-    if (mpi_get_nbits(real)==logq)
-      mpi_sub(real, real, q);
-    if (mpi_get_nbits(imag)==logq)
-      mpi_sub(imag, imag, q);
-#endif
-    m[i] = (double)mpi_to_s128(real)/Delta
-        +I*(double)mpi_to_s128(imag)/Delta;
-  }
+  for (unsigned int i=0, j=0; i<hectx.slots; i++, j+=gap)
+    m[i] = mpi_to_double(a->coeffs[j])/Delta + I*mpi_to_double(a->coeffs[j+nh])/Delta;
   canemb(m, hectx.slots);
-  mpi_release(real);
-  mpi_release(imag);
+}
+
+/** canemb_norm - Canonical embedding norm */
+double canemb_norm_(const poly_mpi_t *a)
+{
+  _Complex double m[hectx.slots];
+  unsigned int nh = polyctx.n/2;
+  unsigned int gap = nh/hectx.slots;
+  for (unsigned int i=0, j=0; i<hectx.slots; i++, j+=gap)
+    m[i] = mpi_to_double(a->coeffs[j]) + I*mpi_to_double(a->coeffs[j+nh]);
+  canemb(m, hectx.slots);
+  unsigned int len = hectx.slots*2;
+  double u[len];
+  for (unsigned int i=0; i<hectx.slots; i++) {
+    u[i            ] = round((long double)creal(m[i]));
+    u[i+hectx.slots] = round((long double)cimag(m[i]));
+  }
+  return blas_dnrmmax(u, len);
 }
 
 /** canemb_norm - Canonical embedding norm */
@@ -86,29 +102,27 @@ double canemb_norm(const _Complex double m[], const double Delta)
     u[i            ] = round((long double)creal(m[i])*Delta);
     u[i+hectx.slots] = round((long double)cimag(m[i])*Delta);
   }
-  double norm = 0;
-  for (unsigned int i=0; i<len; i++) {
-    double val = fabs(u[i]);
-    if (norm<val)
-      norm = val;
-  }
-  return norm;
+  return blas_dnrmmax(u, len);
 }
 
 /** Encodes complex array into pt, an integral polynomial. */
 void he_ecd(struct he_pt *pt, const _Complex double *m)
 {
-  pt->l = hectx.L;
-  double norm = canemb_norm(m, hectx.Delta);
-  pt->nu = (norm>=hectx.Delta)? norm : hectx.Delta;
+  pt->nu = hectx.Delta;
   encode(&pt->m, m, pt->nu);
 }
 
 /** Decodes pt, an integral polynomial, into complex array. */
 void he_dcd(_Complex double *m, struct he_pt *pt)
 {
-  double Delta = (pt->nu>=hectx.Delta)? hectx.Delta : pt->nu;
-  decode(m, &pt->m, Delta, hectx.q[pt->l]);
+  decode(m, &pt->m, pt->nu);
+}
+
+void he_const_pt(he_pt_t *pt, const _Complex double num)
+{
+  unsigned int nh = polyctx.n/2;
+  double_to_mpi(&pt->m.coeffs[0 ], round((long double)creal(num)*hectx.Delta));
+  double_to_mpi(&pt->m.coeffs[nh], round((long double)cimag(num)*hectx.Delta));
 }
 
 END_DECLS

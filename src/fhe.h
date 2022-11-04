@@ -38,10 +38,12 @@ struct he_ctx {
   MPI PqL;
   MPI *q;           /* initial modulus, used for generating pk,sk,rlk,rk,ck. */
   MPI *qh;          /* q half */
+  MPI p;
   unsigned int slots;
   uint64_t Delta;   /* scaling factor */
   unsigned int L;   /* maximum level */
   unsigned int dim; /* current number of limbs; current dimension of the RNS */
+  unsigned int dimevk;
   /* bounds */
   struct bnd_ctx bnd;
   double Bmult;     /* valid multiplication */
@@ -53,6 +55,12 @@ struct he_pk {
 };
 typedef struct he_pk he_pk_t;
 
+struct he_evk {
+  poly_rns_t p0;
+  poly_rns_t p1;
+};
+typedef struct he_evk he_evk_t;
+
 struct he_ct{
   unsigned int l;      /* Current evaluation level, 0<=l<=L */
   double nu;
@@ -63,7 +71,6 @@ struct he_ct{
 typedef struct he_ct he_ct_t;
 
 struct he_pt{
-  unsigned int l; /* Current evaluation level, 0<=l<=L */
   double nu;      /* canonical embedding norm */
   poly_mpi_t m;
 };
@@ -76,10 +83,12 @@ void hectx_exit();
 /* he-mem.c */
 void he_alloc_sk(poly_mpi_t *sk);
 void he_alloc_pk(struct he_pk *pk);
+void he_alloc_evk(he_evk_t *evk);
 void he_alloc_pt(struct he_pt *pt);
 void he_alloc_ct(struct he_ct *ct);
 void he_free_sk(poly_mpi_t *sk);
 void he_free_pk(struct he_pk *pk);
+void he_free_evk(he_evk_t *evk);
 void he_free_pt(struct he_pt *pt);
 void he_free_ct(struct he_ct *ct);
 void he_copy_ct(struct he_ct *dest, const struct he_ct *src);
@@ -92,15 +101,20 @@ void he_show_ct_params(const struct he_ct *ct, const char *title, ...);
 /* he-encode.c */
 void he_ecd(struct he_pt *pt, const _Complex double *m);
 void he_dcd(_Complex double *m, struct he_pt *pt);
+void he_const_pt(he_pt_t *pt, const _Complex double num);
 
 /* he-kem.c */
 void he_keypair(struct he_pk *pk, poly_mpi_t *sk);
 void he_enc_pk(struct he_ct *ct, const struct he_pt *pt, const struct he_pk *pk);
 void he_enc_sk(struct he_ct *ct, const struct he_pt *pt, const poly_mpi_t *sk);
 void he_dec(struct he_pt *pt, const struct he_ct *ct, const poly_mpi_t *sk);
-void he_genrlk(struct he_pk *rlk, const poly_mpi_t *sk);
-void he_genck(he_pk_t *ck, const poly_mpi_t *sk);
-void he_genrk(struct he_pk *rk, const poly_mpi_t *sk);
+void he_genrlk(he_evk_t *rlk, const poly_mpi_t *sk);
+void he_genck(he_evk_t *ck, const poly_mpi_t *sk);
+void he_genrk(he_evk_t *rk, const poly_mpi_t *sk);
+
+/* he-rescale.c */
+void he_rs(struct he_ct *ct);
+void he_moddown(he_ct_t *ct);
 
 /* he-add.c */
 void he_add(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2);
@@ -110,16 +124,16 @@ void he_subpt(he_ct_t *dest, const he_ct_t *src, const he_pt_t *pt);
 void he_neg(he_ct_t *ct);
 
 /* he-mult.c */
-void he_mul(struct he_ct *ct, const struct he_ct *ct1, const struct he_ct *ct2, const struct he_pk *rlk);
+void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_evk_t *rlk);
 void he_mulpt(struct he_ct *dest, const struct he_ct *src, const struct he_pt *pt);
-void he_rs(struct he_ct *ct);
 
 /* he-automorphism.c */
-void he_conj(he_ct_t *ct, const he_pk_t *ck);
-void he_rot(he_ct_t *ct, const int rot, const he_pk_t *rk);
+void he_conj(he_ct_t *ct, const he_evk_t *ck);
+void he_rot(he_ct_t *ct, const int rot, const he_evk_t *rk);
 
 /* he-algo.c */
-void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_pk_t *rk);
+void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_evk_t *rk);
+void he_inv(he_ct_t *ct_inv, const he_ct_t *ct, const he_evk_t *rlk, const unsigned int iter);
 
 END_DECLS
 

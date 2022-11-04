@@ -29,16 +29,9 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
-/* types.c */
-extern void s64_to_mpi(MPI r, int64_t a);
-extern void mpi_smod(MPI r, const MPI q, const MPI qh);
-
-/* rng.c */
-extern void randombytes(uint8_t *x,size_t xlen);
-
-/* sample.h */
-extern void sample_discrete_gaussian(int64_t *vec, const size_t m);
-extern void sample_zero_center(int64_t *vec, const size_t m);
+/* sample.c */
+extern void sample_error(poly_mpi_t *r);
+extern void sample_zo(poly_mpi_t *r);
 extern void sample_uniform(poly_mpi_t *r, const MPI q);
 
 void he_enc_pk(struct he_ct *ct, const struct he_pt *pt, const struct he_pk *pk)
@@ -51,36 +44,32 @@ void he_enc_pk(struct he_ct *ct, const struct he_pt *pt, const struct he_pk *pk)
   MPI q  = mpi_copy(hectx.q[hectx.L]);
   MPI qh = mpi_copy(hectx.qh[hectx.L]);
   unsigned int n = polyctx.n;
-  unsigned int dim = mpi_get_nbits(q)/GPQHE_LOGP+1;
-  /* sample */
-  int64_t vbuf[n];
-  int64_t e0buf[n];
-  int64_t e1buf[n];
-  sample_zero_center(vbuf, n);
-  sample_discrete_gaussian(e0buf, n);
-  sample_discrete_gaussian(e1buf, n);
-  poly_mpi_t  v; poly_mpi_alloc(&v);
-  MPI e0 = mpi_new(0);
-  MPI e1 = mpi_new(0);
-  for (size_t i=0; i<n; i++)
-    s64_to_mpi(v.coeffs[i] ,  vbuf[i]);
-  poly_mul(&ct->c0, &pk->p0, &v, dim, q);
-  poly_mul(&ct->c1, &pk->p1, &v, dim, q);
+  /* sample coeffs for pk */
+  poly_mpi_t v;
+  poly_mpi_alloc(&v);
+  sample_zo(&v);
+  /* sample error for pt */
+  poly_mpi_t e0, e1;
+  poly_mpi_alloc(&e0);
+  poly_mpi_alloc(&e1);
+  sample_error(&e0);
+  sample_error(&e1);
+  /* main */
+  poly_mul(&ct->c0, &pk->p0, &v, hectx.dim, q);
+  poly_mul(&ct->c1, &pk->p1, &v, hectx.dim, q);
   for (unsigned int i=0; i<n; i++) {
-    s64_to_mpi(e0, e0buf[i]);
-    s64_to_mpi(e1, e1buf[i]);
     mpi_add(ct->c0.coeffs[i], ct->c0.coeffs[i], pt->m.coeffs[i]);
-    mpi_addm(ct->c0.coeffs[i], ct->c0.coeffs[i], e0, q);
-    mpi_addm(ct->c1.coeffs[i], ct->c1.coeffs[i], e1, q);
+    mpi_addm(ct->c0.coeffs[i], ct->c0.coeffs[i], e0.coeffs[i], q);
+    mpi_addm(ct->c1.coeffs[i], ct->c1.coeffs[i], e1.coeffs[i], q);
     mpi_smod(ct->c0.coeffs[i], q, qh); /* (v*pk + pt + e0) smod q */
     mpi_smod(ct->c1.coeffs[i], q, qh); /* (v*pk      + e1) smod q */
   }
   /* release */
   mpi_release(q);
   mpi_release(qh);
-  mpi_release(e0);
-  mpi_release(e1);
   poly_mpi_free(&v);
+  poly_mpi_free(&e0);
+  poly_mpi_free(&e1);
 }
 
 void he_enc_sk(struct he_ct *ct, const struct he_pt *pt, const poly_mpi_t *sk)
@@ -93,35 +82,30 @@ void he_enc_sk(struct he_ct *ct, const struct he_pt *pt, const poly_mpi_t *sk)
   MPI q  = mpi_copy(hectx.q[hectx.L]);
   MPI qh = mpi_copy(hectx.qh[hectx.L]);
   unsigned int n = polyctx.n;
-  unsigned int dim = mpi_get_nbits(q)/GPQHE_LOGP+1;
   /* sample */
-  int64_t vbuf[n];
-  int64_t ebuf[n];
-  sample_zero_center(vbuf, n);
-  sample_discrete_gaussian(ebuf, n);
-  MPI e = mpi_new(0);
+  poly_mpi_t e;
+  poly_mpi_alloc(&e);
+  sample_error(&e);
   sample_uniform(&ct->c1, q);
   /* main */
-  poly_mul(&ct->c0, &ct->c1, sk, dim, q); /* c0=c1*sk */
+  poly_mul(&ct->c0, &ct->c1, sk, hectx.dim, q); /* c0=c1*sk */
   for (unsigned int i=0; i<n; i++) {
-    s64_to_mpi(e, ebuf[i]);
     mpi_neg (ct->c0.coeffs[i], ct->c0.coeffs[i]); /* c0=-c1*sk */
     mpi_add (ct->c0.coeffs[i], ct->c0.coeffs[i], pt->m.coeffs[i]); /* c0=-c1*sk+m */
-    mpi_addm(ct->c0.coeffs[i], ct->c0.coeffs[i], e, q); /* (-c1*sk+m+e) smod q */
+    mpi_addm(ct->c0.coeffs[i], ct->c0.coeffs[i], e.coeffs[i], q); /* (-c1*sk+m+e) smod q */
     mpi_smod(ct->c0.coeffs[i], q, qh);
     mpi_smod(ct->c1.coeffs[i], q, qh);
   }
   /* release */
-  mpi_release(e);
   mpi_release(q);
   mpi_release(qh);
+  poly_mpi_free(&e);
 }
 
 void he_dec(struct he_pt *pt, const struct he_ct *ct, const poly_mpi_t *sk)
 {
   /* pt init */
-  pt->l  = ct->l;
-  pt->nu = (ct->nu>=hectx.Delta)? ct->nu : hectx.Delta;
+  pt->nu = ct->nu;
   /* local variables */
   MPI q  = mpi_copy(hectx.q[ct->l]);
   MPI qh = mpi_copy(hectx.qh[ct->l]);

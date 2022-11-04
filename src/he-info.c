@@ -29,6 +29,9 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
+/* types.c */
+extern void show_mpi(MPI a);
+
 void he_show_ctx_params()
 {
   printf("\033[1mEncryption parameters:\033[0m\n");
@@ -83,7 +86,6 @@ void he_show_pt_params(const struct he_pt *pt, const char *title, ...)
   vfprintf (stdout, title, arg_ptr);
   va_end (arg_ptr);
   printf("\033[0m\n");
-  printf("\\_ l  = %u\n", pt->l);
   printf("\\_ nu = %.10g (%ld bits)\n", pt->nu, (long)log2(pt->nu)+1);
 }
 

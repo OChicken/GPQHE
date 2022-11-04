@@ -29,22 +29,17 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
-/* types.c */
-extern void s64_to_mpi(MPI r, int64_t a);
-extern void mpi_smod(MPI r, const MPI q, const MPI qh);
-
 /* ntt.c */
 extern void    ntt(uint64_t a[], const struct rns_ctx *rns);
 extern void invntt(uint64_t a[], const struct rns_ctx *rns);
 
 /* rns.c */
 extern void rns_decompose(uint64_t ahat[], const MPI a[], const struct rns_ctx *rns);
-extern void rns_reconstruct(MPI a[], const uint64_t ahat[], const unsigned int i, const struct rns_ctx *rns);
 
 /** Relinearizes a dim3 ciphertext back down to dim2 */
-static void he_relin(struct he_ct *ct,
+static void he_relin(he_ct_t *ct,
   const poly_mpi_t *d0, const poly_mpi_t *d1, const poly_mpi_t *d2,
-  const he_pk_t *rlk, const MPI ql)
+  const he_evk_t *rlk, const MPI ql)
 {
   /* local variables */
   MPI qlh = mpi_copy(hectx.qh[ct->l]);
@@ -52,15 +47,29 @@ static void he_relin(struct he_ct *ct,
   MPI Pql = mpi_new(0);
   mpi_mul(Pql, P, ql);
   unsigned int n = polyctx.n;
-  unsigned int dim = (mpi_get_nbits(ql)+mpi_get_nbits(Pql))/GPQHE_LOGP+1;
+  /* d2 in Rql, rlk.{p0,p1} in R_PqL */
+  unsigned int dim = (mpi_get_nbits(ql)+mpi_get_nbits(hectx.PqL))/GPQHE_LOGP+1;
+  /* decompose d2 */
+  poly_rns_t d2hat, c0hat, c1hat;
+  poly_rns_alloc(&d2hat, 1);
+  poly_rns_alloc(&c0hat, dim);
+  poly_rns_alloc(&c1hat, dim);
+  struct rns_ctx *rns = polyctx.rns;
+  for (unsigned int d=0; d<dim; d++) {
+    rns_decompose(d2hat.coeffs, d2->coeffs, rns);
+    ntt(d2hat.coeffs, rns);
+    poly_rns_mul(&c0hat.coeffs[d*n], d2hat.coeffs, &rlk->p0.coeffs[d*n], rns);
+    invntt(&c0hat.coeffs[d*n], rns); /* d2*rlk.p0, in R_{ql*PqL} */
+    poly_rns_mul(&c1hat.coeffs[d*n], d2hat.coeffs, &rlk->p1.coeffs[d*n], rns);
+    invntt(&c1hat.coeffs[d*n], rns); /* d2*rlk.p0, in R_{ql*PqL} */
+    rns = (d<dim-1)? rns->next : rns;
+  }
+  poly_rns2mpi(&ct->c0, &c0hat, rns, Pql);
+  poly_rns2mpi(&ct->c1, &c1hat, rns, Pql);
   /* main */
-  poly_mul(&ct->c0, d2, &rlk->p0, dim, Pql);
-  poly_mul(&ct->c1, d2, &rlk->p1, dim, Pql);
   for (size_t i=0; i<n; i++) {
-    mpi_rdiv(ct->c0.coeffs[i], ct->c0.coeffs[i], P);
-    mpi_rdiv(ct->c1.coeffs[i], ct->c1.coeffs[i], P);
-    mpi_mod(ct->c0.coeffs[i], ct->c0.coeffs[i], ql);
-    mpi_mod(ct->c1.coeffs[i], ct->c1.coeffs[i], ql);
+    mpi_rdiv(ct->c0.coeffs[i], ct->c0.coeffs[i], P); /* (d2*rlk.p0)/P, now in Rql */
+    mpi_rdiv(ct->c1.coeffs[i], ct->c1.coeffs[i], P); /* (d2*rlk.p1)/P, now in Rql */
     mpi_addm(ct->c0.coeffs[i], ct->c0.coeffs[i], d0->coeffs[i], ql);
     mpi_addm(ct->c1.coeffs[i], ct->c1.coeffs[i], d1->coeffs[i], ql);
     mpi_smod(ct->c0.coeffs[i], ql, qlh);
@@ -70,10 +79,13 @@ static void he_relin(struct he_ct *ct,
   mpi_release(qlh);
   mpi_release(P);
   mpi_release(Pql);
+  poly_rns_free(&d2hat);
+  poly_rns_free(&c0hat);
+  poly_rns_free(&c1hat);
 }
 
 /** ct_dest = ct1*ct2 */
-void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_pk_t *rlk)
+void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_evk_t *rlk)
 {
   assert(ct1->l==ct2->l);
   /* ct init */
@@ -95,12 +107,10 @@ void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_pk_t *
   poly_rns_alloc(&ct1c1hat, 1);
   poly_rns_alloc(&ct2c0hat, 1);
   poly_rns_alloc(&ct2c1hat, 1);
-  poly_rns_t d0hat, d1hat, d2hat, d11hat, d12hat;
+  poly_rns_t d0hat, d1hat, d2hat;
   poly_rns_alloc(&d0hat, dim);
   poly_rns_alloc(&d1hat, dim);
   poly_rns_alloc(&d2hat, dim);
-  poly_rns_alloc(&d11hat, 1);
-  poly_rns_alloc(&d12hat, 1);
   /* main - cross terms */
   struct rns_ctx *rns = polyctx.rns;
   for (unsigned int d=0; d<dim; d++) {
@@ -116,17 +126,19 @@ void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_pk_t *
     invntt(&d0hat.coeffs[d*n], rns); /* d0 = ct1.c0*ct2.c0 */
     poly_rns_mul( &d2hat.coeffs[d*n], ct1c1hat.coeffs, ct2c1hat.coeffs, rns);
     invntt(&d2hat.coeffs[d*n], rns); /* d2 = ct1.c1*ct2.c1 */
-    poly_rns_mul(d11hat.coeffs, ct1c0hat.coeffs, ct2c1hat.coeffs, rns);
-    invntt(d11hat.coeffs, rns); /* d11 = ct1.c0*ct2.c1 */
-    poly_rns_mul(d12hat.coeffs, ct1c1hat.coeffs, ct2c0hat.coeffs, rns);
-    invntt(d12hat.coeffs, rns); /* d12 = ct1.c1*ct2.c0 */
-    poly_rns_add(&d1hat.coeffs[d*n], d11hat.coeffs, d12hat.coeffs, rns);
-    if (d<dim-1)
-      rns=rns->next;
+    /* ct1.c0*ct2.c1 */
+    poly_rns_mul(ct1c0hat.coeffs, ct1c0hat.coeffs, ct2c1hat.coeffs, rns);
+    invntt(ct1c0hat.coeffs, rns);
+    /* ct1.c1*ct2.c0 */
+    poly_rns_mul(ct1c1hat.coeffs, ct1c1hat.coeffs, ct2c0hat.coeffs, rns);
+    invntt(ct1c1hat.coeffs, rns);
+    /* d1 = ct1.c0*ct2.c1 + ct1.c1*ct2.c0 */
+    poly_rns_add(&d1hat.coeffs[d*n], ct1c0hat.coeffs, ct1c1hat.coeffs, rns);
+    rns = (d<dim-1)? rns->next : rns;
   }
   poly_rns2mpi(&d0, &d0hat, rns, q); /* d0 = ct1.c0*ct2.c0 */
-  poly_rns2mpi(&d1, &d1hat, rns, q); /* d1 = ct1.c0*ct2.c1 + ct1.c1*ct2.c0 */
   poly_rns2mpi(&d2, &d2hat, rns, q); /* d2 = ct1.c1*ct2.c1 */
+  poly_rns2mpi(&d1, &d1hat, rns, q); /* d1 = ct1.c0*ct2.c1 + ct1.c1*ct2.c0 */
   /* main - relinearize */
   he_relin(ct, &d0, &d1, &d2, rlk, q);
   /* release */
@@ -138,8 +150,6 @@ void he_mul(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2, const he_pk_t *
   poly_rns_free(&d0hat);
   poly_rns_free(&d1hat);
   poly_rns_free(&d2hat);
-  poly_rns_free(&d11hat);
-  poly_rns_free(&d12hat);
   poly_mpi_free(&d0);
   poly_mpi_free(&d1);
   poly_mpi_free(&d2);
@@ -157,62 +167,32 @@ void he_mulpt(he_ct_t *dest, const he_ct_t *src, const he_pt_t *pt)
   unsigned int n = polyctx.n;
   unsigned int dim = (mpi_get_nbits(q)+log2(pt->nu))/GPQHE_LOGP+1;
   /* alloc */
-  poly_rns_t pthat, srcc0hat, srcc1hat, destc0hat, destc1hat;
+  poly_rns_t pthat, c0hat, c1hat;
   poly_rns_alloc(&pthat, 1);
-  poly_rns_alloc(&srcc0hat, 1);
-  poly_rns_alloc(&srcc1hat, 1);
-  poly_rns_alloc(&destc0hat, dim);
-  poly_rns_alloc(&destc1hat, dim);
+  poly_rns_alloc(&c0hat, dim);
+  poly_rns_alloc(&c1hat, dim);
   /* main */
   struct rns_ctx *rns = polyctx.rns;
   for (unsigned int d=0; d<dim; d++) {
     rns_decompose(pthat.coeffs, pt->m.coeffs, rns);
-    rns_decompose(srcc0hat.coeffs, src->c0.coeffs, rns);
-    rns_decompose(srcc1hat.coeffs, src->c1.coeffs, rns);
+    rns_decompose(&c0hat.coeffs[d*n], src->c0.coeffs, rns);
+    rns_decompose(&c1hat.coeffs[d*n], src->c1.coeffs, rns);
     ntt(pthat.coeffs, rns);
-    ntt(srcc0hat.coeffs, rns);
-    ntt(srcc1hat.coeffs, rns);
-    poly_rns_mul(&destc0hat.coeffs[d*n], srcc0hat.coeffs, pthat.coeffs, rns);
-    invntt(&destc0hat.coeffs[d*n], rns);
-    poly_rns_mul(&destc1hat.coeffs[d*n], srcc1hat.coeffs, pthat.coeffs, rns);
-    invntt(&destc1hat.coeffs[d*n], rns);
-    if (d<dim-1)
-      rns=rns->next;
+    ntt(&c0hat.coeffs[d*n], rns);
+    ntt(&c1hat.coeffs[d*n], rns);
+    poly_rns_mul(&c0hat.coeffs[d*n], &c0hat.coeffs[d*n], pthat.coeffs, rns);
+    invntt(&c0hat.coeffs[d*n], rns);
+    poly_rns_mul(&c1hat.coeffs[d*n], &c1hat.coeffs[d*n], pthat.coeffs, rns);
+    invntt(&c1hat.coeffs[d*n], rns);
+    rns = (d<dim-1)? rns->next : rns;
   }
-  poly_rns2mpi(&dest->c0, &destc0hat, rns, q);
-  poly_rns2mpi(&dest->c1, &destc1hat, rns, q);
+  poly_rns2mpi(&dest->c0, &c0hat, rns, q);
+  poly_rns2mpi(&dest->c1, &c1hat, rns, q);
   /* release */
   mpi_release(q);
   poly_rns_free(&pthat);
-  poly_rns_free(&srcc0hat);
-  poly_rns_free(&srcc1hat);
-  poly_rns_free(&destc0hat);
-  poly_rns_free(&destc1hat);
-}
-
-/** rescale */
-void he_rs(struct he_ct *ct)
-{
-  /* ct init */
-  ct->l -= 1;
-  ct->nu /= hectx.Delta;
-  ct->B = ct->B/hectx.Delta + hectx.bnd.Brs;
-  /* local varables */
-  unsigned int n = polyctx.n;
-  MPI q  = mpi_copy(hectx.q [ct->l]);
-  MPI qh = mpi_copy(hectx.qh[ct->l]);
-  MPI Delta = mpi_new(0);
-  s64_to_mpi(Delta, hectx.Delta);
-  /* main */
-  for (unsigned int i=0; i<n; i++) {
-    mpi_rdiv(ct->c0.coeffs[i], ct->c0.coeffs[i], Delta);
-    mpi_rdiv(ct->c1.coeffs[i], ct->c1.coeffs[i], Delta);
-    mpi_smod(ct->c0.coeffs[i], q, qh);
-    mpi_smod(ct->c1.coeffs[i], q, qh);
-  }
-  mpi_release(Delta);
-  mpi_release(q);
-  mpi_release(qh);
+  poly_rns_free(&c0hat);
+  poly_rns_free(&c1hat);
 }
 
 END_DECLS

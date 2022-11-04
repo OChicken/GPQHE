@@ -28,16 +28,13 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
-/* types.c */
-extern void mpi_smod(MPI r, const MPI q, const MPI qh);
-
 /** ct = ct1+ct2 */
 void he_add(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2)
 {
   /* ct init */
   assert(ct1->l==ct2->l);
   ct->l  = ct1->l;
-  ct->nu = ct1->nu+ct2->nu;
+  ct->nu = (ct1->nu>=ct2->nu)? ct1->nu : ct2->nu;//ct1->nu+ct2->nu;
   ct->B  = ct1->B+ct2->B ;
   /* local variables */
   MPI q  = mpi_copy(hectx.q [ct->l]);
@@ -61,7 +58,7 @@ void he_sub(he_ct_t *ct, const he_ct_t *ct1, const he_ct_t *ct2)
   /* ct init */
   assert(ct1->l==ct2->l);
   ct->l  = ct1->l;
-  ct->nu = ct1->nu+ct2->nu;
+  ct->nu = (ct1->nu>=ct2->nu)? ct1->nu : ct2->nu;//ct1->nu+ct2->nu;
   ct->B  = ct1->B+ct2->B ;
   /* local variables */
   MPI q  = mpi_copy(hectx.q [ct->l]);
@@ -84,7 +81,7 @@ void he_addpt(he_ct_t *dest, const he_ct_t *src, const he_pt_t *pt)
 {
   /* ct init */
   dest->l  = src->l;
-  dest->nu = src->nu+pt->nu;
+  dest->nu = (src->nu>=pt->nu)? src->nu : pt->nu;//src->nu+pt->nu;
   dest->B  = src->B;
   /* local variables */
   MPI q  = mpi_copy(hectx.q [dest->l]);
@@ -107,7 +104,7 @@ void he_subpt(he_ct_t *dest, const he_ct_t *src, const he_pt_t *pt)
 {
   /* ct init */
   dest->l  = src->l;
-  dest->nu = src->nu+pt->nu;
+  dest->nu = (src->nu>=pt->nu)? src->nu : pt->nu;//src->nu+pt->nu;
   dest->B  = src->B;
   /* local variables */
   MPI q  = mpi_copy(hectx.q [dest->l]);

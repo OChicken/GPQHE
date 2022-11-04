@@ -23,14 +23,8 @@
 
 BEGIN_DECLS
 
-/* poly.h */
-extern struct poly_ctx polyctx;
-
 /* fhe.h */
 extern struct he_ctx hectx;
-
-/* types.c */
-extern void mpi_smod(MPI r, const MPI q, const MPI qh);
 
 static void zrotdiag(_Complex double rotdiag[], const _Complex double A[],
                           const unsigned int idx, const int rot)
@@ -50,7 +44,7 @@ static void zrotdiag(_Complex double rotdiag[], const _Complex double A[],
 
 /** gemv: GEneral Matrix Vector multiplication
  * he_ckks_gemv(&ct_Av, A, &ct_v, evk->rot_key, ctx); */
-void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_pk_t *rk)
+void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_evk_t *rk)
 {
   /* plaintext A is of dim (d/2)*(d/2).  */
   unsigned int n1 = sqrt(hectx.slots);
@@ -95,5 +89,37 @@ void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_p
   he_free_ct(&ct_rot);
 }
 
+void he_inv(he_ct_t *ct_inv, const he_ct_t *ct, const he_evk_t *rlk, const unsigned int iter)
+{
+  /* alloc */
+  he_pt_t one, two;
+  he_alloc_pt(&one);
+  he_alloc_pt(&two);
+  he_ct_t tmp, an, bn;
+  he_alloc_ct(&tmp);
+  he_alloc_ct(&an);
+  he_alloc_ct(&bn);
+  /* assign */
+  he_const_pt(&one, 1);
+  he_const_pt(&two, 2);
+  he_copy_ct(&tmp, ct);
+  he_neg(&tmp);              /* tmp = -ct */
+  he_addpt(&an, &tmp, &two); /* an = 2-ct */
+  he_moddown(&an);
+  he_addpt(&bn, &tmp, &one); /* bn = 1-ct */
+  for (unsigned int n=0; n<iter; n++) {
+    he_mul(&bn, &bn, &bn, rlk);  /* bn = bn*bn */
+    he_rs(&bn);
+    he_addpt(&tmp, &bn, &one);         /* tmp = 1+bn */
+    he_mul(&an, &an, &tmp, rlk);
+    he_rs(&an);
+  }
+  he_copy_ct(ct_inv, &an);
+  he_free_pt(&one);
+  he_free_pt(&two);
+  he_free_ct(&an);
+  he_free_ct(&bn);
+  he_free_ct(&tmp);
+}
 
 END_DECLS

@@ -28,18 +28,16 @@ extern struct poly_ctx polyctx;
 /* fhe.h */
 extern struct he_ctx hectx;
 
-/* types.c */
-extern void s64_to_mpi(MPI r, int64_t a);
-extern void mpi_smod(MPI r, const MPI q, const MPI qh);
-
-/* rng.c */
-extern void randombytes(uint8_t *x,size_t xlen);
-
-/* sample.h */
-extern void sample_hwt(int64_t *vec, const size_t m);
-extern void sample_discrete_gaussian(int64_t *vec, const size_t m);
-extern void sample_zero_center(int64_t *vec, const size_t m);
+/* sample.c */
+extern void sample_sk(poly_mpi_t *r);
+extern void sample_error(poly_mpi_t *r);
 extern void sample_uniform(poly_mpi_t *r, const MPI q);
+
+/* ntt.c */
+extern void ntt(uint64_t a[], const struct rns_ctx *rns);
+
+/* rns.c */
+extern void rns_decompose(uint64_t ahat[], const MPI a[], const struct rns_ctx *rns);
 
 /** he_keypair - sk and pk key pair */
 void he_keypair(he_pk_t *pk, poly_mpi_t *sk)
@@ -48,72 +46,78 @@ void he_keypair(he_pk_t *pk, poly_mpi_t *sk)
   MPI qL = mpi_copy(hectx.q[hectx.L]);
   MPI qh = mpi_copy(hectx.qh[hectx.L]);
   unsigned int n = polyctx.n;
-  unsigned int dim = mpi_get_nbits(qL)/GPQHE_LOGP+1;
   printf("Generating sk and pk ... ");
   fflush(stdout);
   /* secret key */
-  int64_t sbuf[n];
-  memset(sbuf, 0, sizeof(sbuf));
-  sample_hwt(sbuf, n);
-  for (size_t i=0; i<n; i++)
-    s64_to_mpi(sk->coeffs[i], sbuf[i]);
-  /* sample error for public key */
-  MPI e = mpi_new(0);
-  int64_t ebuf[n];
-  memset(ebuf, 0, sizeof(ebuf));
-  sample_discrete_gaussian(ebuf, n);
+  sample_sk(sk);
+  /* sample error for pk */
+  poly_mpi_t e;
+  poly_mpi_alloc(&e);
+  sample_error(&e);
   /* main */
   sample_uniform(&pk->p1, qL);
-  poly_mul(&pk->p0, sk, &pk->p1, dim, qL);
-  for (unsigned int i=0; i<polyctx.n; i++) {
-    s64_to_mpi(e, ebuf[i]);
+  poly_mul(&pk->p0, sk, &pk->p1, hectx.dim, qL);
+  for (unsigned int i=0; i<n; i++) {
     mpi_neg(pk->p0.coeffs[i], pk->p0.coeffs[i]);
-    mpi_addm(pk->p0.coeffs[i], pk->p0.coeffs[i], e, qL);
+    mpi_addm(pk->p0.coeffs[i], pk->p0.coeffs[i], e.coeffs[i], qL);
     mpi_smod(pk->p0.coeffs[i], qL, qh);
     mpi_smod(pk->p1.coeffs[i], qL, qh); /* add this or not does not affect the correctness */
   }
   /* release */
-  mpi_release(e);
   mpi_release(qL);
   mpi_release(qh);
+  poly_mpi_free(&e);
   printf("done.\n");
 }
 
 /** switching keys */
-static void he_genswk(he_pk_t *swk, const poly_mpi_t *sp, const poly_mpi_t *sk)
+static void he_genswk(he_evk_t *swk, const poly_mpi_t *sp, const poly_mpi_t *sk)
 {
   /* local variables */
   MPI P    = mpi_copy(hectx.P);
-  MPI PqL  = mpi_new(0);
+  MPI PqL  = mpi_copy(hectx.PqL);
   MPI PqLh = mpi_new(0);
-  mpi_mul(PqL,  P, hectx.q [hectx.L]);
-  mpi_mul(PqLh, P, hectx.qh[hectx.L]);
+  MPI two  = mpi_set_ui(NULL, 2);
+  mpi_fdiv(PqLh, NULL, PqL, two);
   unsigned int n = polyctx.n;
   unsigned int dim = mpi_get_nbits(PqL)/GPQHE_LOGP+1;
-  /* error */
-  MPI e = mpi_new(0);
-  int64_t ebuf[n];
-  sample_discrete_gaussian(ebuf, n);
+  /* sample error for swk */
+  poly_mpi_t e;
+  poly_mpi_alloc(&e);
+  sample_error(&e);
   /* main */
   for (size_t i=0; i<n; i++)
     mpi_mul(sp->coeffs[i], sp->coeffs[i], P);
-  sample_uniform(&swk->p1, PqL);
-  poly_mul(&swk->p0, &swk->p1, sk, dim, PqL);
+  poly_mpi_t swkp0, swkp1;
+  poly_mpi_alloc(&swkp0);
+  poly_mpi_alloc(&swkp1);
+  sample_uniform(&swkp1, PqL);
+  poly_mul(&swkp0, &swkp1, sk, dim, PqL);
   for (unsigned int i=0; i<n; i++) {
-    s64_to_mpi(e, ebuf[i]);
-    mpi_neg(swk->p0.coeffs[i], swk->p0.coeffs[i]);                      /* swk.p0 = -swk.p1*sk */
-    mpi_add(swk->p0.coeffs[i], swk->p0.coeffs[i], e);                   /* swk.p0 = -swk.p1*sk+e */
-    mpi_addm(swk->p0.coeffs[i], swk->p0.coeffs[i], sp->coeffs[i], PqL); /* swk.p0 = -swk.p1*sk+e+Psp mod PqL */
-    mpi_smod(swk->p0.coeffs[i], PqL, PqLh);
-    mpi_smod(swk->p1.coeffs[i], PqL, PqLh);
+    mpi_neg(swkp0.coeffs[i], swkp0.coeffs[i]);                      /* swk.p0 = -swk.p1*sk */
+    mpi_add(swkp0.coeffs[i], swkp0.coeffs[i], e.coeffs[i]);         /* swk.p0 = -swk.p1*sk+e */
+    mpi_addm(swkp0.coeffs[i], swkp0.coeffs[i], sp->coeffs[i], PqL); /* swk.p0 = -swk.p1*sk+e+Psp mod PqL */
+    mpi_smod(swkp0.coeffs[i], PqL, PqLh);
+    mpi_smod(swkp1.coeffs[i], PqL, PqLh);
+  }
+  struct rns_ctx *rns = polyctx.rns;
+  for (unsigned int d=0; d<hectx.dimevk; d++) {
+    rns_decompose(&swk->p0.coeffs[d*n], swkp0.coeffs, rns);
+    ntt(&swk->p0.coeffs[d*n], rns);
+    rns_decompose(&swk->p1.coeffs[d*n], swkp1.coeffs, rns);
+    ntt(&swk->p1.coeffs[d*n], rns);
+    rns = (d<hectx.dimevk-1)? rns->next : rns;
   }
   mpi_release(P);
   mpi_release(PqL);
   mpi_release(PqLh);
-  mpi_release(e);
+  mpi_release(two);
+  poly_mpi_free(&e);
+  poly_mpi_free(&swkp0);
+  poly_mpi_free(&swkp1);
 }
 
-void he_genrlk(he_pk_t *rlk, const poly_mpi_t *sk)
+void he_genrlk(he_evk_t *rlk, const poly_mpi_t *sk)
 {
   /* local variables */
   MPI q = mpi_copy(hectx.q[hectx.L]);
@@ -132,7 +136,7 @@ void he_genrlk(he_pk_t *rlk, const poly_mpi_t *sk)
 }
 
 /** conjugate key */
-void he_genck(he_pk_t *ck, const poly_mpi_t *sk)
+void he_genck(he_evk_t *ck, const poly_mpi_t *sk)
 {
   /* local variables */
   poly_mpi_t ck_;
@@ -147,7 +151,7 @@ void he_genck(he_pk_t *ck, const poly_mpi_t *sk)
   poly_mpi_free(&ck_);
 }
 
-void he_genrk(he_pk_t *rk, const poly_mpi_t *sk)
+void he_genrk(he_evk_t *rk, const poly_mpi_t *sk)
 {
   /* local variables */
   poly_mpi_t rk_;

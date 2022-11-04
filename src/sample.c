@@ -30,9 +30,24 @@ BEGIN_DECLS
 /* poly.h */
 extern struct poly_ctx polyctx;
 
+/* types.c */
+extern uint64_t loadu64_littleendian(const uint8_t x[8]);
+extern uint64_t loadnbits_littleendian(const uint8_t buf[], const unsigned int nbits);
+extern void loadmpi_littleendian(MPI a, const uint8_t buf[], const unsigned int nbits);
+
 /* rng.c */
 extern void randombytes_init(uint8_t *entropy_input, uint8_t *personalization_string);
 extern void randombytes(uint8_t *x,size_t xlen);
+
+static void s64_to_mpi(MPI r, int64_t a)
+{
+  if (a<0) {
+    mpi_set_ui(r, -a);
+    mpi_neg(r, r);
+  }
+  else
+    mpi_set_ui(r, a);
+}
 
 void sample_z01vec(_Complex double vec[], const size_t m)
 {
@@ -56,6 +71,16 @@ void sample_discrete_gaussian(int64_t *vec, const size_t m)
   }
 }
 
+void sample_error(poly_mpi_t *r)
+{
+  unsigned int n = polyctx.n;
+  int64_t buf[n];
+  memset(buf, 0, sizeof(buf));
+  sample_discrete_gaussian(buf, n);
+  for (size_t i=0; i<n; i++)
+    s64_to_mpi(r->coeffs[i], buf[i]);
+}
+
 void sample_hwt(int64_t *vec, const size_t m)
 {
   uint8_t tmp[GPQHE_BLKSIZ/8];
@@ -74,6 +99,16 @@ void sample_hwt(int64_t *vec, const size_t m)
   }
 }
 
+void sample_sk(poly_mpi_t *r)
+{
+  unsigned int n = polyctx.n;
+  int64_t buf[n];
+  memset(buf, 0, sizeof(buf));
+  sample_hwt(buf, n);
+  for (size_t i=0; i<n; i++)
+    s64_to_mpi(r->coeffs[i], buf[i]);
+}
+
 void sample_zero_center(int64_t *vec, const size_t m)
 {
   uint8_t buf[2*m/8];
@@ -83,6 +118,16 @@ void sample_zero_center(int64_t *vec, const size_t m)
   for (size_t i=0; i<m; i++)
     vec[i] = (mpi_test_bit(a, 2*i)==0)? 0 : (mpi_test_bit(a, 2*i+1)==0)? 1: -1;
   mpi_release(a);
+}
+
+void sample_zo(poly_mpi_t *r)
+{
+  unsigned int n = polyctx.n;
+  int64_t buf[n];
+  memset(buf, 0, sizeof(buf));
+  sample_zero_center(buf, n);
+  for (size_t i=0; i<n; i++)
+    s64_to_mpi(r->coeffs[i], buf[i]);
 }
 
 void sample_uniform(poly_mpi_t *r, const MPI q)

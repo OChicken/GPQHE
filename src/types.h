@@ -43,19 +43,12 @@ _Static_assert(sizeof(uint64_t) == 8,
 BEGIN_DECLS
 
 typedef __uint128_t u128;
-typedef  __int128_t s128;
 typedef struct gcry_mpi *MPI;
 
 uint64_t mpi_to_u64 (MPI a);
 int64_t  mpi_to_s64 (MPI a);
-u128     mpi_to_u128(MPI a);
-s128     mpi_to_s128(MPI a);
 void mpi_rdiv(MPI q, const MPI a, const MPI m);
-uint64_t loadu64_littleendian(const uint8_t x[8]);
-uint64_t loadnbits_littleendian(const uint8_t buf[], const unsigned int nbits);
-void loadmpi_littleendian(MPI a, const uint8_t buf[], const unsigned int nbits);
-void show_mpi(MPI a);
-void double_to_mpi(MPI *r, long double a);
+void mpi_smod(MPI r, const MPI q, const MPI qh);
 
 END_DECLS
 

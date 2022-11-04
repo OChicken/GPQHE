@@ -43,13 +43,6 @@ extern void invntt(uint64_t a[], const struct rns_ctx *rns);
 extern void rns_decompose(uint64_t ahat[], const MPI a[], const struct rns_ctx *rns);
 extern void rns_reconstruct(MPI a[], const uint64_t ahat[], const unsigned int i, const struct rns_ctx *rns);
 
-static inline void mpi_smod(MPI r, const MPI q, const MPI qh)
-{
-  mpi_mod(r, r, q);
-  if (mpi_cmp(r, qh)>=0)
-    mpi_sub(r, r, q);
-}
-
 void poly_mpi_alloc(poly_mpi_t *a)
 {
   a->coeffs = gcry_malloc(polyctx.n*sizeof(MPI));
@@ -108,12 +101,15 @@ void poly_mul(poly_mpi_t *r, const poly_mpi_t *a, const poly_mpi_t *b,
     if (d<dim-1)
       rns=rns->next;
   }
+  MPI qh = mpi_new(0);
+  mpi_fdiv(qh, NULL, q, GPQHE_TWO);
   for (unsigned int i=0; i<polyctx.n; i++) {
     rns_reconstruct(r->coeffs, rhat.coeffs, i, rns);
     if (mpi_cmp(r->coeffs[i], rns->P_2)>0)
       mpi_sub(r->coeffs[i], r->coeffs[i], rns->P);
-    mpi_mod(r->coeffs[i], r->coeffs[i], q);
+    mpi_smod(r->coeffs[i], q, qh);
   }
+  mpi_release(qh);
   poly_rns_free(&ahat);
   poly_rns_free(&bhat);
   poly_rns_free(&rhat);

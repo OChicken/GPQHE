@@ -74,66 +74,40 @@ int64_t mpi_to_s64(MPI a)
   return num;
 }
 
-u128 mpi_to_u128(MPI a)
+double mpi_to_double(MPI a)
 {
-  u128 num;
-  size_t length = gcry_mpi_get_nbits (a);
-  /* if is zero */
-  if (!length)
-    return 0;
-  /* if not zero, and pos */
-  assert(gcry_mpi_is_neg(a)==0);
-  num = gcry_mpi_test_bit(a, length);
-  while (length-- > 0) {
-    num <<= 1;
-    num += gcry_mpi_test_bit(a, length);
-  }
-  return num;
-}
-
-s128 mpi_to_s128(MPI a)
-{
-  s128 num;
-  size_t length = gcry_mpi_get_nbits (a);
+  double num;
+  size_t length = mpi_get_nbits (a);
   /* if is zero */
   if (!length)
     return 0;
   /* if not zero, and neg */
-  if (gcry_mpi_is_neg(a)) {
-    MPI b = gcry_mpi_new(0);
-    gcry_mpi_set(b,a);
-    gcry_mpi_neg(b,b);
-    num = gcry_mpi_test_bit(b, length);
+  if (mpi_is_neg(a)) {
+    MPI b = mpi_new(0);
+    mpi_set(b,a);
+    mpi_neg(b,b);
+    num = mpi_test_bit(b, length);
     while (length-- > 0) {
-      num <<= 1;
-      num += gcry_mpi_test_bit(b, length);
+      num *= 2.;
+      num += mpi_test_bit(b, length);
     }
     num = -num;
     mpi_release(b);
   }
   /* if not zero, and pos */
   else {
-    num = gcry_mpi_test_bit(a, length);
+    num = mpi_test_bit(a, length);
     while (length-- > 0) {
-      num <<= 1;
-      num += gcry_mpi_test_bit(a, length);
+      num *= 2.;
+      num += mpi_test_bit(a, length);
     }
   }
   return num;
 }
 
-void s64_to_mpi(MPI r, int64_t a)
-{
-  if (a<0) {
-    mpi_set_ui(r, -a);
-    mpi_neg(r, r);
-  }
-  else
-    mpi_set_ui(r, a);
-}
-
 void mpi_smod(MPI r, const MPI q, const MPI qh)
 {
+  mpi_mod(r, r, q);
   if (mpi_cmp(r, qh)>=0)
     mpi_sub(r, r, q);
 }
@@ -232,10 +206,8 @@ void double_to_mpi(MPI *r, long double a)
   int sign;
   if (a>=0)
     sign = 1;
-  else {
-    sign = -1;
-    a=-a;
-  }
+  else
+    sign = -1, a=-a;
   long double uint64_max = UINT64_MAX;
   size_t count = a/uint64_max;
   a -= count*uint64_max;
