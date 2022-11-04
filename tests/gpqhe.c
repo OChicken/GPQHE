@@ -687,6 +687,8 @@ void set(unsigned int *logn, unsigned int *logq, unsigned int *slots,
       "--logn=num --logq=num --logp=num --iter=num\n", argv[0]);
     exit(1);
   }
+  if (!strcmp(argv[1], "ecd"))
+    return;
   unsigned int idx=3; /* start index of parameter chosen */
   while (argv[idx]) {
     if (!strncmp(argv[idx], "--logn=", 7))
@@ -742,7 +744,7 @@ int main(int argc, char *argv[])
   if (!strcmp(argv[1], "gemv"))
     test_gemv(argv[2]);
   if (!strcmp(argv[1], "inv"))
-    test_inv(argv[2], iter);
+    test_inv (argv[2], iter);
 
 release:
   /* release */
