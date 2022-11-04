@@ -627,14 +627,13 @@ TEST_BEGIN();
   he_alloc_ct(&ct);
   he_evk_t rlk;
   he_alloc_evk(&rlk);
-  _Complex double m[slots], mraw[slots], m0[slots], minv[slots], an[slots], bn[slots];
+  _Complex double m[slots], m0[slots], minv[slots], an[slots], bn[slots];
   sample_z01vec(m0, slots);
-  sample_z01vec(m0, slots);
-  //sample_z01vec(m0, slots);
   for (unsigned int i=0; i<slots; i++) {
-    m0[i] = creal(m0[i]);
+    m0[i] = creal(m0[i])+0.5;
     minv[i] = 1/m0[i];
   }
+  printf("\n");
 
 TEST_DO("gen rlk");
   he_genrlk(&rlk, &sk);
@@ -715,7 +714,8 @@ int main(int argc, char *argv[])
   if (!strcmp(argv[1], "inv")) {
     logq  = 438;
     slots = 4;
-    iter  = 6;
+    logDelta = 40;
+    iter  = 7;
   }
   set(&logn, &logq, &slots, &logDelta, &iter, argc, argv);
   mpi_lshift(q, q, logq);
