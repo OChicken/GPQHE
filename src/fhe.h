@@ -134,6 +134,7 @@ void he_rot(he_ct_t *ct, const int rot, const he_evk_t *rk);
 /* he-algo.c */
 void he_gemv(he_ct_t *ct_dest, _Complex double *A, const he_ct_t *ct, const he_evk_t *rk);
 void he_inv(he_ct_t *ct_inv, const he_ct_t *ct, const he_evk_t *rlk, const unsigned int iter);
+void he_sqrt(he_ct_t *ct_sqrt, const he_ct_t *ct, const he_evk_t *rlk, const unsigned int iter);
 
 END_DECLS
 

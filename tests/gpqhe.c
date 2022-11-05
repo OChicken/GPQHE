@@ -90,6 +90,7 @@ static unsigned int slots;
 static he_pk_t pk;
 static poly_mpi_t sk;
 static double diff;
+static unsigned int iter;
 
 #define CHECK_DIFF(m,m0)                       \
   TEST_PLACEHOLDER();                          \
@@ -617,7 +618,7 @@ TEST_DONE();
 TEST_END();
 }
 
-static void test_inv(const char *key, const unsigned int iter)
+static void test_inv(const char *key)
 {
 TEST_BEGIN();
   he_pt_t pt;
@@ -627,13 +628,12 @@ TEST_BEGIN();
   he_alloc_ct(&ct);
   he_evk_t rlk;
   he_alloc_evk(&rlk);
-  _Complex double m[slots], m0[slots], minv[slots], an[slots], bn[slots];
+  _Complex double m[slots], m0[slots], minv[slots];
   sample_z01vec(m0, slots);
   for (unsigned int i=0; i<slots; i++) {
     m0[i] = creal(m0[i])+0.5;
     minv[i] = 1/m0[i];
   }
-  printf("\n");
 
 TEST_DO("gen rlk");
   he_genrlk(&rlk, &sk);
@@ -642,13 +642,14 @@ TEST_DONE();
   memcpy(m, m0, sizeof(m0));
 TEST_DO("raw");
   for (unsigned int i=0; i<slots; i++) {
-    an[i] = 2-m[i];
-    bn[i] = 1-m[i];
-    for (unsigned int k=0; k<iter; k++) {
-      bn[i] = bn[i]*bn[i];
-      an[i] = an[i]*(bn[i]+1);
+    _Complex double an, bn;
+    an = 2-m[i];
+    bn = 1-m[i];
+    for (unsigned int _=0; _<iter; _++) {
+      bn = bn*bn;
+      an = an*(bn+1);
     }
-    m[i] = an[i];
+    m[i] = an;
   }
   CHECK_DIFF(m, minv);
 TEST_DONE();
@@ -668,12 +669,69 @@ TEST_DO("inv");
   CHECK_DIFF(m, minv);
 TEST_DONE();
 
-TEST_DO("exit");
   he_free_pt(&pt);
   he_free_ct(&ct);
   he_free_ct(&ct_inv);
   he_free_evk(&rlk);
+
+TEST_END();
+}
+
+static void test_sqrt(const char *key)
+{
+TEST_BEGIN();
+  he_pt_t pt;
+  he_alloc_pt(&pt);
+  he_ct_t ct_sqrt, ct;
+  he_alloc_ct(&ct);
+  he_alloc_ct(&ct_sqrt);
+  he_evk_t rlk;
+  he_alloc_evk(&rlk);
+  _Complex double m[slots], m0[slots], msqrt[slots];
+  sample_z01vec(m0, slots);
+  for (unsigned int i=0; i<slots; i++) {
+    m0[i] = creal(m0[i]);
+    msqrt[i] = sqrt(creal(m0[i]));
+  }
+
+TEST_DO("gen rlk");
+  he_genrlk(&rlk, &sk);
 TEST_DONE();
+
+  memcpy(m, m0, sizeof(m0));
+TEST_DO("raw");
+  for (unsigned int i=0; i<slots; i++){
+    _Complex double an, bn;
+    an = m[i];
+    bn = m[i]-1;
+    for (unsigned int _=0; _<iter; _++) {
+      an = an*(1-bn/2);
+      bn = (bn*bn)*((bn-3)/4);
+    }
+    m[i] = an;
+  }
+  CHECK_DIFF(m, msqrt);
+TEST_DONE();
+
+  memcpy(m, m0, sizeof(m0));
+  he_ecd(&pt, m);
+  if (!strcmp(key, "sk"))
+    he_enc_sk(&ct, &pt, &sk);
+  if (!strcmp(key, "pk"))
+    he_enc_pk(&ct, &pt, &pk);
+
+TEST_DO("sqrt");
+  he_sqrt(&ct_sqrt, &ct, &rlk, iter);
+  he_show_ct_params(&ct_sqrt, "ct_sqrt");
+  he_dec(&pt, &ct_sqrt, &sk);
+  he_dcd(m, &pt);
+  CHECK_DIFF(m, msqrt);
+TEST_DONE();
+
+  he_free_pt(&pt);
+  he_free_ct(&ct);
+  he_free_ct(&ct_sqrt);
+  he_free_evk(&rlk);
 
 TEST_END();
 }
@@ -709,13 +767,12 @@ int main(int argc, char *argv[])
   unsigned int logn = 14;
   unsigned int logq = 220;
   unsigned int logDelta = 50;
-  unsigned int iter;
   slots = 64;
   if (!strcmp(argv[1], "inv")) {
     logq  = 438;
     slots = 4;
-    logDelta = 40;
-    iter  = 7;
+    logDelta = 40; /* 30 */
+    iter  = 7;     /* 12 */
   }
   set(&logn, &logq, &slots, &logDelta, &iter, argc, argv);
   mpi_lshift(q, q, logq);
@@ -744,7 +801,9 @@ int main(int argc, char *argv[])
   if (!strcmp(argv[1], "gemv"))
     test_gemv(argv[2]);
   if (!strcmp(argv[1], "inv"))
-    test_inv (argv[2], iter);
+    test_inv (argv[2]);
+  if (!strcmp(argv[1], "sqrt"))
+    test_sqrt(argv[2]);
 
 release:
   /* release */
