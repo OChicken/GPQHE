@@ -120,6 +120,7 @@ void he_dcd(_Complex double *m, struct he_pt *pt)
 
 void he_const_pt(he_pt_t *pt, const _Complex double num)
 {
+  pt->nu = hectx.Delta;
   unsigned int nh = polyctx.n/2;
   double_to_mpi(&pt->m.coeffs[0 ], round((long double)creal(num)*hectx.Delta));
   double_to_mpi(&pt->m.coeffs[nh], round((long double)cimag(num)*hectx.Delta));

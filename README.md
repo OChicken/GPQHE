@@ -1,6 +1,10 @@
 # gpqhe
 A C library doing fully homomorphic encryption under the license of LGPL.
 
+## Package dependency
+
+libgcrypt 1.10
+
 # How to use
 
 ```sh
@@ -12,3 +16,7 @@ LD_LIBRARY_PATH=$PWD/../lib:$LD_LIBRARY_PATH
 make test-gpqhe
 ./test-gpqhe enc sk
 ````
+
+## Acknowledgement
+
+HEAAN, NewHope, Kyber

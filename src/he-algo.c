@@ -102,6 +102,7 @@ void he_inv(he_ct_t *ct_inv, const he_ct_t *ct, const he_evk_t *rlk, const unsig
   /* assign */
   he_const_pt(&one, 1);
   he_const_pt(&two, 2);
+  /* main */
   he_copy_ct(&tmp, ct);
   he_neg(&tmp);              /* tmp = -ct */
   he_addpt(&an, &tmp, &two); /* an = 2-ct */
@@ -120,6 +121,48 @@ void he_inv(he_ct_t *ct_inv, const he_ct_t *ct, const he_evk_t *rlk, const unsig
   he_free_ct(&an);
   he_free_ct(&bn);
   he_free_ct(&tmp);
+}
+
+void he_sqrt(he_ct_t *ct_sqrt, const he_ct_t *ct, const he_evk_t *rlk, const unsigned int iter)
+{
+  /* alloc */
+  he_pt_t one, three, half, quarter;
+  he_alloc_pt(&one);
+  he_alloc_pt(&three);
+  he_alloc_pt(&half);
+  he_alloc_pt(&quarter);
+  he_ct_t tmp, an, bn;
+  he_alloc_ct(&tmp);
+  he_alloc_ct(&an);
+  he_alloc_ct(&bn);
+  /* assign */
+  he_const_pt(&one, 1);
+  he_const_pt(&three, 3);
+  he_const_pt(&half, 0.5);
+  he_const_pt(&quarter, 0.25);
+  /* main */
+  he_copy_ct(&an, ct);    /* an = ct */
+  he_subpt(&bn, ct, &one); /* bn = ct-1 */
+  for (size_t n=0; n<iter; n++) {
+    /* an */
+    he_mulpt(&tmp, &bn, &half);  /* bn/2 */
+    he_rs(&tmp);
+    he_subpt(&tmp, &tmp, &one);  /* bn/2-1 */
+    he_neg(&tmp);                /* tmp = 1-bn/2 */
+    he_moddown(&an);
+    he_mul(&an, &an, &tmp, rlk); /* an = an*(1-bn/2) */
+    he_rs(&an);
+    /* bn */
+    he_subpt(&tmp, &bn, &three);
+    he_mulpt(&tmp, &tmp, &quarter); /* tmp = (bn-3)/4 */
+    he_rs(&tmp);
+    he_mul(&bn, &bn, &bn, rlk);     /* bn = bn*bn */
+    he_rs(&bn);
+    he_mul(&bn, &bn, &tmp, rlk);    /* bn = (bn*bn)*((bn-3)/4) */
+    he_rs(&bn);
+    he_show_ct_params(&an, "an[%u]", n);
+  }
+  he_copy_ct(ct_sqrt, &an);
 }
 
 END_DECLS
