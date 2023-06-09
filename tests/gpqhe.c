@@ -19,7 +19,7 @@
  */
 
 #include "../src/gpqhe.h"
-#include "../pmu/pmu.h"
+#include "../libpmu/pmu.h"
 #include <complex.h>
 #include <math.h>
 

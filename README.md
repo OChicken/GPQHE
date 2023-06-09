@@ -1,4 +1,4 @@
-# gpqhe
+# GPQHE
 
 A C library doing fully homomorphic encryption under the license of LGPL.
 
@@ -145,20 +145,19 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 
 ## Package dependency
 
-libgcrypt 1.10. This library is used in Linux kernel, and we utilize its mpi (multi-precision integer) module in gpqhe. If your system does not have it, do `sudo apt install libgcrypt11-dev`.
+libgcrypt 1.10. This library is used in Linux kernel, and we utilize its mpi (multi-precision integer) module in GPQHE. If your system does not have it, do `sudo apt install libgcrypt11-dev`.
 
 ## How to use
 
 ```sh
-#step 1: get gpqhe
-git clone https://github.com/OChicken/gpqhe.git
-
-#step 2: build gpqhe
-cd gpqhe
+# step 1: get GPQHE and build
+git clone https://github.com/OChicken/GPQHE.git
+cd GPQHE
+git submodule init
 mkdir lib
 make
 
-#step 3: build&run tests
+# step 2: run tests
 cd tests
 LD_LIBRARY_PATH=$PWD/../lib:$LD_LIBRARY_PATH
 make test-gpqhe

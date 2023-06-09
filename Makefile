@@ -22,5 +22,6 @@ CFLAGS += -Wall -Wextra -Wpedantic -Wredundant-decls -Wshadow -Wpointer-arith -O
 LIBDIR ?= $(ROOT)/lib
 
 all:
-	cd pmu && $(MAKE) || exit 1
+	git submodule update
+	cd libpmu && $(MAKE) && mv libpmu.so ../lib && cd .. || exit 1
 	cd src && $(MAKE) || exit 1
