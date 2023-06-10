@@ -143,6 +143,9 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 </tr>
 </table>
 
+![](doc/NTT_MPI-RNS.pdf)
+*MPI-RNS conversion*
+
 ## Package dependency
 
 libgcrypt 1.10. This library is used in Linux kernel, and we utilize its mpi (multi-precision integer) module in GPQHE. If your system does not have it, do `sudo apt install libgcrypt11-dev`.

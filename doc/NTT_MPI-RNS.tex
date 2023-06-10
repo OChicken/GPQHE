@@ -1,0 +1,63 @@
+\documentclass[preview]{standalone}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \definecolor{lightblue}{RGB}{180,199,220}
+  \definecolor{lightgreen}{RGB}{175, 208, 149}
+  \definecolor{lightmix}{RGB}{153, 204, 204}
+  \definecolor{darkblue}{RGB}{42, 96, 153}
+  \definecolor{darkgreen}{RGB}{0, 169, 51}
+  \definecolor{darkmix}{RGB}{0, 153, 102}
+
+  \filldraw[lightblue] (0,1.5) circle (2.5pt);
+  \filldraw[lightblue] (1,1.5) circle (2.5pt);
+  \filldraw[lightblue] (2,1.5) circle (2.5pt);
+  \filldraw[lightblue] (3,1.5) circle (2.5pt);
+  \filldraw[lightblue] (4,1.5) circle (2.5pt);
+  \filldraw[lightblue] (5,1.5) circle (2.5pt);
+  \draw[lightblue, line width=2pt] (0,1.5) -- (5,1.5);
+  \draw[darkblue] (0,1.5) -- (4.3,1.5);
+  \node[darkblue,left] at (0,1.5){$a_i$};
+  \node[white,above] at (0,1.5){$\tilde{a}_i^1$};
+
+  \node[lightblue,above] at (0.5,1.5){$\hat{a}_i^1$};
+  \node[lightblue,above] at (1.5,1.5){$\hat{a}_i^2$};
+  \node[lightblue,above] at (2.5,1.5){$\hat{a}_i^3$};
+  \node[lightblue,above] at (3.5,1.5){$\hat{a}_i^4$};
+  \node[lightblue,above] at (4.5,1.5){$\hat{a}_i^5$};
+
+  \filldraw[lightgreen] (0,0) circle (2.5pt);
+  \filldraw[lightgreen] (1,0) circle (2.5pt);
+  \filldraw[lightgreen] (2,0) circle (2.5pt);
+  \filldraw[lightgreen] (3,0) circle (2.5pt);
+  \filldraw[lightgreen] (4,0) circle (2.5pt);
+  \filldraw[lightgreen] (5,0) circle (2.5pt);
+  \draw[lightgreen, line width=2pt] (0,0) -- (5,0);
+  \draw[darkgreen] (0,0) -- (4.7,0);
+  \node[darkblue,left] at (0,0){$b_i$};
+  \node[lightgreen,above] at (0.5,0){$\hat{b}_i^1$};
+  \node[lightgreen,above] at (1.5,0){$\hat{b}_i^2$};
+  \node[lightgreen,above] at (2.5,0){$\hat{b}_i^3$};
+  \node[lightgreen,above] at (3.5,0){$\hat{b}_i^4$};
+  \node[lightgreen,above] at (4.5,0){$\hat{b}_i^5$};
+
+  \draw[lightblue]  (5.1,1.5) -- (6,0.75);
+  \draw[lightgreen] (5.1,0  ) -- (6,0.75);
+
+  \filldraw[lightmix] (6,0.75) circle (2.5pt);
+  \filldraw[lightmix] (7,0.75) circle (2.5pt);
+  \filldraw[lightmix] (8,0.75) circle (2.5pt);
+  \filldraw[lightmix] (9,0.75) circle (2.5pt);
+  \filldraw[lightmix] (10,0.75) circle (2.5pt);
+  \filldraw[lightmix] (11,0.75) circle (2.5pt);
+  \draw[lightmix, line width=2pt] (6,0.75) -- (11,0.75);
+  \draw[darkmix] (6,0.75) -- (10.5,0.75);
+  \node[darkmix,right] at (11,0.75){$c_i$};
+  \node[lightmix,above] at (6.5,0.75){$\scriptstyle\hat{c}_i^1=\hat{a}_i^1\hat{b}_i^1$};
+  \node[lightmix,above] at (7.5,0.75){$\scriptstyle\hat{c}_i^2=\hat{a}_i^2\hat{b}_i^2$};
+  \node[lightmix,above] at (8.5,0.75){$\scriptstyle\hat{c}_i^3=\hat{a}_i^3\hat{b}_i^3$};
+  \node[lightmix,above] at (9.5,0.75){$\scriptstyle\hat{c}_i^4=\hat{a}_i^4\hat{b}_i^4$};
+  \node[lightmix,above] at (10.5,0.75){$\scriptstyle\hat{c}_i^5=\hat{a}_i^1\hat{b}_i^1$};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,44 @@
+\documentclass[preview]{standalone}
+\renewcommand\familydefault{\sfdefault}
+\usepackage{multirow}
+\usepackage{hhline}
+\usepackage{amsmath}
+\usepackage{bm}
+
+\begin{document}
+\begin{table}
+\footnotesize
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+                                  &Used for ...                    &Keys or Functions\\
+\hhline{|=|=|=|}
+\multirow{4}{*}{Advanced}         &\multirow{2}{*}{linear transformation}&$\mathsf{gemv}(\bm{A},\mathsf{ct},\mathsf{rk})$, $\mathsf{sum}(\mathsf{ct},\mathsf{rk})$, $\mathsf{idx}(\mathsf{ct},i,\mathsf{rk})$\\
+                                  &                                      &$\mathsf{nrm22}(\mathsf{ct},\mathsf{rlk},\mathsf{rk},\mathsf{ck})$\\
+                                  \cline{2-3}
+                                  &nonlinear functions                   &$\mathsf{exp}(\mathsf{ct},\mathsf{rlk})$, $\mathsf{ln}(\mathsf{ct},\mathsf{rlk})$, $\mathsf{sigmoid}(\mathsf{ct},\mathsf{rlk})$\\
+                                  \cline{2-3}
+                                  &Comparison                            &$\mathsf{inv}(\mathsf{ct},\mathsf{rlk},d)$, $\mathsf{sqrt}(\mathsf{ct},\mathsf{rlk},d)$, $\mathsf{cmp}(\mathsf{ct}_1,\mathsf{ct}_2,\mathsf{rlk},d,\alpha)$\\
+\hline
+\multirow{5}{*}{Primitives}       &\multirow{2}{*}{addition}             &$\mathsf{add_{pt}}(\mathsf{ct},\mathsf{pt})$, $\mathsf{add}(\mathsf{ct}_1,\mathsf{ct}_2)$, $\mathsf{neg}(\mathsf{ct})$\\
+                                  &                                      &$\mathsf{sub_{pt}}(\mathsf{ct},\mathsf{pt})$, $\mathsf{sub}(\mathsf{ct}_1,\mathsf{ct}_2)$\\
+                                  \cline{2-3}
+                                  &level switch                          &$\mathsf{rs}_{\ell\rightarrow\ell'}(\mathsf{ct})$, $\mathsf{moddown}_{\ell\rightarrow\ell'}(\mathsf{ct})$\\
+                                  \cline{2-3}
+                                  &multiplication                        &$\mathsf{mult_{pt}}(\mathsf{ct},\mathsf{pt})$, $\mathsf{mult}(\mathsf{ct}_1,\mathsf{ct}_2,\mathsf{rlk})$\\
+                                  \cline{2-3}
+                                  &automorphism                          &$\mathsf{rot}(\mathsf{ct},r,\mathsf{rk})$, $\mathsf{conj}(\mathsf{ct},\mathsf{ck})$\\
+\hline
+Encryptor                         &encrypt/decrypt                       &$\mathsf{ct}=\mathsf{enc_{pk/sk}}(\mathsf{pt},\mathsf{pk}/\mathsf{sk})$, $\mathsf{pt}=\mathsf{dec}(\mathsf{ct},\mathsf{sk})$\\
+\hline
+Encoder                           &encode/decode                         &$\mathsf{pt}=\mathsf{ecd}(\bm{z},\Delta)$, $\bm{z}=\mathsf{dcd}(\mathsf{pt},\Delta)$\\
+\hline
+\multirow{4}{*}{KEM}              &public key, secret key                &$\mathsf{pk,sk}=\mathsf{keypair}(\mathsf{ctx})$\\
+                                  \cline{2-3}
+                                  &\multirow{3}{*}{evaluation keys}      &$\mathsf{rlk}=\mathsf{genswk}(\mathsf{sk}\cdot\mathsf{sk},\mathsf{sk})$\\
+                                  &                                      &$\mathsf{rk}_r=\mathsf{genswk}(\tau_{5^r\text{mod}2n}(\mathsf{sk}),\mathsf{sk}),0\leq r<\cdots n_{\text{slots}}$\\
+                                  &                                      &$\mathsf{ck}=\mathsf{genswk}(\tau_{-1}(\mathsf{sk}),\mathsf{sk})$\\
+\hline
+\end{tabular}
+\end{table}
+\end{document}
