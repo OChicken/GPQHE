@@ -22,6 +22,6 @@ CFLAGS += -Wall -Wextra -Wpedantic -Wredundant-decls -Wshadow -Wpointer-arith -O
 LIBDIR ?= $(ROOT)/lib
 
 all:
-	git submodule update
+	git submodule update --remote
 	cd libpmu && $(MAKE) && mv libpmu.so ../lib && cd .. || exit 1
 	cd src && $(MAKE) || exit 1

@@ -154,7 +154,8 @@ libgcrypt 1.10. This library is used in Linux kernel, and we utilize its mpi (mu
 git clone https://github.com/OChicken/GPQHE.git
 cd GPQHE
 git submodule init
-mkdir lib
+git submodule update
+mkdir -p lib
 make
 
 # step 2: run tests
@@ -163,7 +164,7 @@ LD_LIBRARY_PATH=$PWD/../lib:$LD_LIBRARY_PATH
 make test-gpqhe
 ./test-gpqhe enc sk
 ./test-gpqhe mul pk
-````
+```
 
 ## Remarks
 
