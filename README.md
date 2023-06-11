@@ -143,6 +143,8 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 </tr>
 </table>
 
+![RLWE architecture](doc/rlwe-arch.png)
+
 ![HE workflow](doc/he-workflow.jpg)
 
 ![Supported algorithms in GPQHE](doc/gpqhe.jpg)
