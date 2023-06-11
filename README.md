@@ -143,11 +143,11 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 </tr>
 </table>
 
-![HE workflow](doc/he-workflow.png)
+![HE workflow](doc/he-workflow.jpg)
 
-![Supported algorithms in GPQHE](doc/gpqhe.png)
+![Supported algorithms in GPQHE](doc/gpqhe.jpg)
 
-![MPI-RNS conversion](doc/NTT_MPI-RNS.png)
+![MPI-RNS conversion](doc/NTT_MPI-RNS.jpg)
 
 *MPI-RNS conversion*
 
