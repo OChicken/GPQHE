@@ -147,9 +147,9 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 
 ![HE workflow](doc/he-workflow.jpg)
 
-![Supported algorithms in GPQHE](doc/gpqhe.jpg)
+![Supported algorithms in GPQHE](doc/gpqhe.png)
 
-<img src="doc/gpqhe.jpg" width="500px">
+<img src="doc/gpqhe.png" width="500px">
 
 <img src="doc/gpqhe.svg" width="600px">
 
