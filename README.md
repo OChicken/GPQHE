@@ -149,6 +149,8 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 
 ![Supported algorithms in GPQHE](doc/gpqhe.jpg)
 
+<img src="doc/gpqhe.jpg" width="500px">
+
 ![MPI-RNS conversion](doc/NTT_MPI-RNS.jpg)
 
 *MPI-RNS conversion*
