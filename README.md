@@ -16,8 +16,6 @@ The supported algorithms in GPQHE:
 
 ![Supported algorithms in GPQHE](doc/gpqhe.png)
 
-*MPI-RNS conversion*
-
 ## Package dependency
 
 libgcrypt 1.10. This library is used in Linux kernel, and we utilize its mpi (multi-precision integer) module in GPQHE. If your system does not have it, do `sudo apt install libgcrypt11-dev`.
