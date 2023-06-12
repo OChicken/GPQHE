@@ -4,14 +4,17 @@ A C library doing fully homomorphic encryption under the license of LGPL.
 
 ## Architecture
 
+The architecture of a typical RLWE (that utilizing RNS in polynomial arithmetics)
+
 ![RLWE architecture](doc/rlwe.png)
 
+The standard HE workflow:
+
+![HE workflow](doc/he-workflow.png)
+
+The supported algorithms in GPQHE:
+
 ![Supported algorithms in GPQHE](doc/gpqhe.png)
-
-![HE workflow](doc/he-workflow.jpg)
-
-
-![MPI-RNS conversion](doc/NTT_MPI-RNS.png)
 
 *MPI-RNS conversion*
 
