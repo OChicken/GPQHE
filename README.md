@@ -1,8 +1,16 @@
 # GPQHE
 
-A C library doing fully homomorphic encryption under the license of LGPL.
+[GPQHE](https://github.com/OChicken/GPQHE) is a reference implementation of CKKS homomorphic encryption scheme. It is a free software under the terms of LGNU v2.1, and its architecture is designed analog to CKKS’s [HEAAN](https://github.com/snucrypto/HEAAN) and two NIST PQC submissions [NewHope](https://newhopecrypto.org/) & [Crystal-Kyber](https://pq-crystals.org/kyber/).
 
-## Architecture
+## Description
+
+The virtues of [GPQHE](https://github.com/OChicken/GPQHE) includes
+
+- Except using [Libgcrypt](https://gnupg.org/software/libgcrypt/index.html) (the cryptographic library in Linux kernel) for multi-precision integer (MPI) management, it does not rely on any existing HE libraries;
+- Support NTT and MPI-RNS (residual number system) conversion in polynomial multiplication;
+- Support basic HE primitives, linear transformation, digits extraction, nonlinear functions and ciphertext comparison;
+- Purely written in C, and utilize linked-list for context parameters management;
+- Valgrind is used to guarantee that no memory leakage is possible.
 
 The architecture of a typical RLWE (that utilizing RNS in polynomial arithmetics)
 
